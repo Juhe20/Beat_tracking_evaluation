@@ -214,6 +214,6 @@ async def capture_audio_periodically():
 async def main():
     await capture_audio_periodically()
 
-if __name__ == "__main__":
-    asyncio.run(main())
+#if __name__ == "__main__":
+    #asyncio.run(main())
 
