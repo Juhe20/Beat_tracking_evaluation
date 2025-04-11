@@ -21,7 +21,6 @@ import datetime
 
 start_time = datetime.datetime.now()
 
-
 # TODO: Add --learn mode for mapping OSC signals.
 # Output all OSC channels in a row with 1 second delay between.
 
@@ -124,84 +123,52 @@ stability = []
 tempo = []
 time = []
 i = 0
-
+beat_times_list = []
+start_time = None
 
 def callback(indata, _frames, _time, status):
-    global start_time
+    global start_time, beat_times_list
+
+    if start_time is None:
+        start_time = datetime.datetime.now()
+
     elapsed_time = datetime.datetime.now() - start_time
-    elapsed_seconds = elapsed_time.total_seconds()  # Total seconds of elapsed time
-    # Convert to hours, minutes, seconds
-    hours, remainder = divmod(elapsed_seconds, 3600)
-    minutes, remainder = divmod(remainder, 60)
-    seconds = int(remainder)  # Get the whole seconds part
-    milliseconds = int((remainder - seconds) * 1000)  # Get the milliseconds part
+    elapsed_seconds = elapsed_time.total_seconds()
 
     if elapsed_seconds < 30:
-        """Audio callback."""
-        if status:
-            print(status)
-        # counting from 0: index of last channel = number of channels - 1
         beat_detected = beat.process(indata[:, args.channel - 1])
 
-        # OSC messages on framerate level
-        # shift value range from [-1,1] to [0,1] for DAW (like Ableton)
-        client.send_message("/alpha-lfo", (beat.cs.alpha_lfo + 1) / 2)  # [-1,1] to [0,1]
-        client.send_message("/gamma-lfo", (beat.cs.gamma_lfo + 1) / 2)  # [-1,1] to [0,1]
-        client.send_message("/beta-conf", beat.cs.beta_confidence)
-        client.send_message("/gamma-conf", beat.cs.gamma_confidence)
-
-        # OSC / console output on beat level
         if beat_detected:
-            # send OSC messages
-            client.send_message("/stability", beat.plp.stability)
-            client.send_message("/tempo", int(beat.plp.current_tempo))
-            # print to console
-            print(
-                f"OSC to {args.ip}:{args.port}:",
-                f"time in secs = {int(seconds):02}.{milliseconds:03} ",
-                f"tempo={beat.plp.current_tempo}",
-                f"stability={beat.cs.beta_confidence:.3f}",
+            beat_time = float(elapsed_seconds)
+            beat_times_list.append(beat_time)
 
+            print(
+                f"time={beat_time:.3f} | tempo={beat.plp.current_tempo} | stability={beat.cs.beta_confidence:.3f}"
             )
-            time.append(float(elapsed_seconds))
-            tempo.append(beat.plp.current_tempo)
-            stability.append(beat.cs.beta_confidence)
     else:
-        i=+1
-        start_time = datetime.datetime.now()
-        print(time)
-        elapsed_seconds = 0
-        return
+        # After 30 seconds, stop the stream by raising an exception
+        raise sd.CallbackStop
 
 
 # Simulate a function that captures and processes audio
 async def capture_audio():
-    print("Capturing audio...")
-    # Print Arguments
-    print("Beat (C)ommand (L)ine (I)nterface:", vars(args))
-    # Thread Event for keeping sounddevice running
-    event = threading.Event()
+    global beat_times_list, start_time
 
-    # Start Sounddevice Input Stream
-    with sd.InputStream(
-        callback=callback, samplerate=args.samplerate, finished_callback=event.set
-    ):
-        try:
-            event.wait()
-        except KeyboardInterrupt:
-            print("")
-            print("--- beat statistics ---")
-            print(f"{len(tempo)} beats transmitted")
-            print(
-                f"tempo min/avg/max/stddev = "
-                f"{min(tempo):.2f}/{np.mean(tempo):.2f}/"
-                f"{max(tempo):.2f}/{np.std(tempo):.2f}"
-            )
-            print(
-                f"stability min/avg/max/stddev = "
-                f"{min(stability):.3f}/{np.mean(stability):.3f}/"
-                f"{max(stability):.3f}/{np.std(stability):.3f}"
-            )
+    print("Capturing audio for 30 seconds...")
+
+    beat_times_list = []
+    start_time = None
+
+    loop = asyncio.get_event_loop()
+
+    # Create the stream and start it
+    try:
+        with sd.InputStream(callback=callback, samplerate=args.samplerate):
+            await asyncio.sleep(30)  # This won't actually block; stream will stop from callback
+    except sd.CallbackStop:
+        print("Recording finished after 30 seconds.")
+
+    return beat_times_list
 
 async def capture_audio_periodically():
     while True:
@@ -211,8 +178,8 @@ async def capture_audio_periodically():
 
 
 
-async def main():
-    await capture_audio_periodically()
+#async def main():
+    #await capture_audio_periodically()
 
 #if __name__ == "__main__":
     #asyncio.run(main())
