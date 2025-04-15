@@ -9,6 +9,9 @@ import asyncio
 sys.path.append(os.path.join(os.path.dirname(__file__), 'PLP', 'real_time_plp-main'))
 # noinspection PyUnresolvedReferences
 from beatcli import capture_audio, beat_times_list, tempo
+sys.path.append(os.path.join(os.path.dirname(__file__), 'beat_this-main'))
+# noinspection PyUnresolvedReferences
+from beatthis import beat_this
 
 # --------- SETUP ---------
 audio_dir = "Music_files/blues"
@@ -86,10 +89,23 @@ def plp_eval():
     print(f"F: {f_measure} | P: {p_score} | Cemgil: {cemgil} | Goto: {goto} | Continuity: {continuity}")
 
 
+
+# --------- BEAT THIS! EVALUATION ---------
+def beat_this_eval():
+    filename = "00000"
+    gt_beats_file = f"Annotated_beats/blues/gtzan_blues_{filename}.beats"
+    gt_beats = np.loadtxt(gt_beats_file, usecols=0)
+
+    est_beats = beat_this()
+
+    f_measure, p_score, cemgil, goto, continuity = evaluate(gt_beats, est_beats)
+    print(f"F: {f_measure} | P: {p_score} | Cemgil: {cemgil} | Goto: {goto} | Continuity: {continuity}")
+
 # --------- PLOTTING ---------
 #adding when everything works
 
 # --------- MAIN (RUN EVALUATION HERE) ---------
 if __name__ == '__main__':
     #librosa_eval()
-    plp_eval()
+    #plp_eval()
+    beat_this_eval()
