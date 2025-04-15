@@ -118,7 +118,6 @@ beat = RealTimeBeatTracker.from_args(
     lookahead=args.lookahead,
 )
 
-# Global Variables
 stability = []
 tempo = []
 time = []
@@ -128,53 +127,51 @@ start_time = None
 
 def callback(indata, _frames, _time, status):
     global start_time, beat_times_list
-
+    #Timer stuff to count down from 30 seconds
     if start_time is None:
         start_time = datetime.datetime.now()
-
     elapsed_time = datetime.datetime.now() - start_time
     elapsed_seconds = elapsed_time.total_seconds()
 
+    #Checks for beats until it reaches 30 seconds
     if elapsed_seconds < 30:
         beat_detected = beat.process(indata[:, args.channel - 1])
-
+        #Append beat to list of beat times
         if beat_detected:
             beat_time = float(elapsed_seconds)
             beat_times_list.append(beat_time)
-
             print(
                 f"time={beat_time:.3f} | tempo={beat.plp.current_tempo} | stability={beat.cs.beta_confidence:.3f}"
             )
     else:
-        # After 30 seconds, stop the stream by raising an exception
+        #After 30 seconds, stop the audio capture
         raise sd.CallbackStop
 
 
-# Simulate a function that captures and processes audio
+#Capture audio function to get mic input for beat times
 async def capture_audio():
     global beat_times_list, start_time
-
     print("Capturing audio for 30 seconds...")
-
     beat_times_list = []
     start_time = None
-
     loop = asyncio.get_event_loop()
 
-    # Create the stream and start it
+    #Create the audio capture stream and start it
     try:
         with sd.InputStream(callback=callback, samplerate=args.samplerate):
             await asyncio.sleep(30)  # This won't actually block; stream will stop from callback
     except sd.CallbackStop:
-        print("Recording finished after 30 seconds.")
+        print("Audio capture finished")
 
     return beat_times_list
 
 async def capture_audio_periodically():
     while True:
-        await capture_audio()  # Capture and process audio
+        #Capture audio
+        await capture_audio()
         asyncio.create_task(capture_audio())
-        await asyncio.sleep(5)   # Wait 30 seconds before checking again
+        #Wait 30 seconds before checking again
+        await asyncio.sleep(5)
 
 
 
