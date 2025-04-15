@@ -23,7 +23,6 @@ def load_audio(path, dtype="float64"):
             except Exception:
                 raise RuntimeError(f'Could not load audio from "{path}".')
 
-
 class LogMelSpect(torch.nn.Module):
     def __init__(
         self,
