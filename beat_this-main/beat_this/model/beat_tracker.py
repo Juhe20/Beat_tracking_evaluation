@@ -1,6 +1,7 @@
 """
 Model definitions for the Beat This! beat tracker.
 """
+from __future__ import annotations
 
 from collections import OrderedDict
 

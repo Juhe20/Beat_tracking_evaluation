@@ -154,7 +154,7 @@ async def capture_audio():
     print("Capturing audio for 30 seconds...")
     beat_times_list = []
     start_time = None
-    loop = asyncio.get_event_loop()
+
 
     #Create the audio capture stream and start it
     try:
