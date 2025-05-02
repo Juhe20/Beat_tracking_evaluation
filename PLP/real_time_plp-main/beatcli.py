@@ -14,11 +14,14 @@ import threading
 import numpy as np
 import sounddevice as sd
 from pythonosc import udp_client
-
+import soundfile as sf
 from realtimeplp import RealTimeBeatTracker
 import asyncio
 import datetime
+import librosa
 
+#Loads audio file if false, uses microphone input if true
+use_microphone = False
 start_time = datetime.datetime.now()
 
 # TODO: Add --learn mode for mapping OSC signals.
@@ -88,6 +91,12 @@ parser.add_argument(
 parser.add_argument(
     "--port", default=5005, type=int, help="(%(default)s) port for OSC client"
 )
+parser.add_argument(
+    "--file",
+    type=str,
+    default=None,
+    help="Path to an audio file to process instead of using the microphone",
+)
 args = parser.parse_args()
 # List devices
 if args.list_devices:
@@ -149,29 +158,51 @@ def callback(indata, _frames, _time, status):
 
 
 #Capture audio function to get mic input for beat times
-async def capture_audio():
+async def capture_audio(audio_path=None):
     global beat_times_list, start_time
     print("Capturing audio for 30 seconds...")
     beat_times_list = []
     start_time = None
 
+    if not use_microphone:
+        # Offline mode: read from file
+        data, sr = sf.read(audio_path)
+        if sr != args.samplerate:
+            print(f"Resampling from {sr} Hz to {args.samplerate} Hz...")
+            if data.ndim == 1:
+                data = librosa.resample(data, orig_sr=sr, target_sr=args.samplerate)
+            else:
+                data = librosa.resample(data.T, orig_sr=sr, target_sr=args.samplerate).T
+            sr = args.samplerate
 
-    #Create the audio capture stream and start it
-    try:
-        with sd.InputStream(callback=callback, samplerate=args.samplerate):
-            await asyncio.sleep(30)  # This won't actually block; stream will stop from callback
-    except sd.CallbackStop:
-        print("Audio capture finished")
+        # Process in chunks (simulate real-time)
+        num_blocks = int(len(data) / args.blocksize)
+        for i in range(num_blocks):
+            block = data[i * args.blocksize:(i + 1) * args.blocksize]
+            if block.shape[0] != args.blocksize:
+                break
+            beat_detected = beat.process(block[:, args.channel - 1] if data.ndim > 1 else block)
+            elapsed_seconds = i * args.blocksize / args.samplerate
+            if beat_detected:
+                beat_times_list.append(float(elapsed_seconds))
+                print(
+                    f"time={elapsed_seconds:.3f} | tempo={beat.plp.current_tempo} | stability={beat.cs.beta_confidence:.3f}"
+                )
 
-    return beat_times_list
+        print("Audio file processing finished")
+        return beat_times_list
 
-async def capture_audio_periodically():
-    while True:
-        #Capture audio
-        await capture_audio()
-        asyncio.create_task(capture_audio())
-        #Wait 30 seconds before checking again
-        await asyncio.sleep(5)
+    else:
+        # Microphone input mode
+        try:
+            with sd.InputStream(callback=callback, samplerate=args.samplerate):
+                await asyncio.sleep(30)
+        except sd.CallbackStop:
+            print("Microphone input finished")
+
+        return beat_times_list
+
+
 
 
 

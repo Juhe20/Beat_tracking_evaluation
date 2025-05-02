@@ -6,7 +6,7 @@
       <excludeFolder url="file://$MODULE_DIR$/pa_stable_v190700_20210406/portaudio/bindings/java/c/build" />
       <excludeFolder url="file://$MODULE_DIR$/pa_stable_v190700_20210406/portaudio/build" />
     </content>
-    <orderEntry type="jdk" jdkName="beat-env" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="audio-env" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

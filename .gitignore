@@ -9,3 +9,5 @@ wandb/
 .vscode/
 beat_this.egg-info/
 build/
+.idea/misc.xml
+.idea/Beattracking_evaluation.iml

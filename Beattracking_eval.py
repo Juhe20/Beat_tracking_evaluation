@@ -79,20 +79,14 @@ def librosa_eval(audio_path, gt_path):
 
 # --------- PLP EVALUATION ---------
 def plp_eval(audio_path,gt_path):
-    #Start audio clip
-    y, sr = librosa.load(audio_path, sr=None)
-    sd.play(y, sr)
-
     gt_beats = np.loadtxt(gt_path, usecols=0)
-
     #Run capture_audio method from beatcli.py for 30 seconds to get estimated beats
-    est_beats = np.array(asyncio.run(capture_audio()))
+    est_beats = np.array(asyncio.run(capture_audio(audio_path)))
     f_measure, p_score, cemgil, goto, infogain, continuity = evaluate(gt_beats, est_beats)
     print(f"F: {f_measure} | P: {p_score} | Cemgil: {cemgil} | Goto: {goto} | Continuity: {continuity}")
     #plot_beats_vs_ground_truth(gt_beats, est_beats, "PLP estimated beats")
     #Take average of all audio files of a genre (not sure if necessary)
     f_average, p_score_average, cemgil_score_average, goto_score_average,infogain_score_average, continuity_score_average = calculate_averages()
-    sd.stop()
     return f_average, p_score_average, cemgil_score_average, goto_score_average,infogain_score_average, continuity_score_average
 
 
